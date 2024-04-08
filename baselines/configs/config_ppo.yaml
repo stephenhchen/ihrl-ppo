@@ -1,0 +1,44 @@
+cuda_id: 0
+env:
+    env_name: "installing_printer"                     # "installing_printer", "thawing", "cleaning_car", "igibson", "test"
+    specific_task_name: "install_printer"
+    render: false
+    num_train_envs: 20
+    num_test_envs: 10
+    evaluate_graph: true
+
+ppo:
+  early_stopping: false
+  seed: 0
+  # log_dir: baselines/ppo/logs/mb_final_car/
+  # log_dir: baselines/ppo/logs/test/fixed_seed/
+  log_dir: baselines/ppo/logs/rebuttal/test/   # for printer, thaw_fish
+  # log_dir: baselines/ppo/logs/rebuttal/rerun/
+  tb_log_dir:  tb
+  run_dir: run_configs
+  # model_checkpoints: baselines/ppo/fixed_seed_checkpoints/
+  model_checkpoints: baselines/ppo/logs/rebuttal/test/
+  # model_checkpoints: baselines/ppo/rebuttal/rerun/
+  # model_checkpoints: baselines/ppo/mb_final_car_checkpoints/
+  saved_model_fname: null
+  total_timesteps: null   # 8500000 
+  n_eval_episodes: 20
+  eval_freq: 1000
+  max_no_improvement_evals: 10
+  min_evals_before_stopping: 10
+  clip_range: .2
+  ppo_lr: 3.0e-4
+
+  env_steps:
+    installing_printer:
+      skill: 2000000
+      task: 1000000
+    thawing:
+      skill: 10000000
+      task: 5000000
+    cleaning_car:
+      skill: 10000000
+      task: 5000000
+    igibson:
+      skill: 10000000
+      task: 0
