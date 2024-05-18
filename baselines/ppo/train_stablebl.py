@@ -1,3 +1,6 @@
+# import igibson
+# from igibson.envs.igibson_factor_obs_env import iGibsonFactorObsEnv
+
 import datetime
 from pathlib import Path
 import pprint
@@ -8,7 +11,6 @@ from typing import Callable
 import gymnasium as gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.preprocessing import maybe_transpose
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
@@ -17,54 +19,12 @@ from omegaconf import DictConfig, OmegaConf
 
 import sys
 sys.path.append('.')
-# print('SYSTEM PATH:', sys.path)
-# print("Gym path:", gym.__file__)
+print('SYSTEM PATH:', sys.path)
 from baselines.utils import parse_args_and_config
 from baselines.flatten_dict_observation_wrapper import FlattenDictObservation
 
-# from igibson.envs.igibson_env import iGibsonEnv
-# from igibson.envs.igibson_factor_obs_env import iGibsonFactorObsEnv
 
-def create_env(config):
-    env_config = config.env
-    env_name = env_config.env_name
-    mini_behavior_config = env_config.mini_behavior
-    igibson_config = env_config.igibson
-
-    if config.env.selected_suite == 'mini_behavior': 
-        print("Creating mini-behavior env...")
-        mb_task = config.env.env_name
-        task_specific_config = mini_behavior_config[mb_task]
-        env_id = "MiniGrid-" + env_name + "-v0"
-        kwargs = {"evaluate_graph": config.env.evaluate_graph,
-                "discrete_obs": mini_behavior_config.discrete_obs,
-                "room_size": task_specific_config.room_size,
-                "max_steps": task_specific_config.max_steps,
-                "use_stage_reward": task_specific_config.use_stage_reward,
-                "random_obj_pose": task_specific_config.random_obj_pose,
-                "task_name": config.env.specific_task_name,
-                "seed": config.ppo.seed,
-                }
-        print("env id to make:", env_id)
-        # print("all gym envs:", gym.envs.registry.items())
-        env = gym.make(env_id, **kwargs)
-
-    elif config.env.selected_suite == 'igibson': 
-        print("Creating igibson env...")
-        igibson_config = config.env.igibson
-        igibson_config = OmegaConf.to_container(igibson_config, resolve=True)
-        env = iGibsonFactorObsEnv(
-            config_file=igibson_config,
-            mode="headless",
-            action_timestep=1 / 10.0,
-            physics_timestep=1 / 120.0,
-        )
-    
-    env = FlattenDictObservation(env)
-    return env
-
-
-def make_env(config: DictConfig) -> Callable:
+def make_env(config: DictConfig, env_seed: int) -> Callable:
 
     def _init_env():
         env_config = config.env
@@ -84,7 +44,7 @@ def make_env(config: DictConfig) -> Callable:
                     "use_stage_reward": task_specific_config.use_stage_reward,
                     "random_obj_pose": task_specific_config.random_obj_pose,
                     "task_name": config.env.specific_task_name,
-                    "seed": config.ppo.seed,
+                    "seed": config.ppo.seed*1000 + env_seed,
                     }
             env = gym.make(env_id, **kwargs)
 
@@ -115,6 +75,8 @@ if __name__ == "__main__":
 
     run_dir = Path(args.log_dir) / args.run_dir / config.env.selected_suite
     tb_log_dir = Path(args.log_dir) / args.tb_log_dir / config.env.selected_suite
+    eval_dir = Path(args.log_dir) / args.eval_dir / config.env.selected_suite
+    
     env_config_to_log = dict(config.env[config.env.selected_suite])
     env_name = config.env.env_name
     
@@ -157,9 +119,9 @@ if __name__ == "__main__":
     # obs, reward, terminated, truncated, info = env.step(a)
     # print(info)
     # exit()
-    train_envs = VecMonitor(SubprocVecEnv([make_env(config)
+    train_envs = VecMonitor(SubprocVecEnv([make_env(config, i)
                                            for i in range(config.env.num_train_envs)]))
-    eval_envs = VecMonitor(SubprocVecEnv([make_env(config)
+    eval_envs = VecMonitor(SubprocVecEnv([make_env(config, i)
                                           for i in range(config.env.num_test_envs)]))
 
     # set maximum steps to act
@@ -203,7 +165,9 @@ if __name__ == "__main__":
         eval_envs,
         eval_freq=args.eval_freq,
         callback_after_eval=callback_after_eval,
+        n_eval_episodes=config.env.num_test_envs,
         best_model_save_path=model_save_dir,
+        log_path=eval_dir,
         verbose=1
     )
 
@@ -232,7 +196,7 @@ if __name__ == "__main__":
 
     # Evaluate the policy after training
     mean_reward, std_reward = evaluate_policy(model, eval_envs,
-                                              n_eval_episodes=args.n_eval_episodes)
+                                              n_eval_episodes=args.num_test_envs)
     print(f"After Training: Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
     # # Save the trained model and delete it
@@ -244,5 +208,5 @@ if __name__ == "__main__":
 
     # Evaluate the trained model loaded from file
     mean_reward, std_reward = evaluate_policy(model, eval_envs,
-                                              n_eval_episodes=args.n_eval_episodes)
+                                              n_eval_episodes=args.num_test_envs)
     print(f"After Loading: Mean reward: {mean_reward} +/- {std_reward:.2f}")

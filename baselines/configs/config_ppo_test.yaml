@@ -10,11 +10,11 @@ env:
 ppo:
   early_stopping: false
   seed: 0
-  log_dir: baselines/ppo/logs/neurips
+  log_dir: baselines/ppo/logs/rebuttal/test_eval/
   tb_log_dir:  tb
   run_dir: run_configs
   eval_dir: evals
-  model_checkpoints: baselines/ppo/neurips
+  model_checkpoints: baselines/ppo/rebuttal/test_eval/
   saved_model_fname: null
   total_timesteps: null   # 8500000 
   eval_freq: 1000
