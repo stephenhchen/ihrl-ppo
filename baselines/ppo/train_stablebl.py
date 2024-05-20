@@ -166,6 +166,7 @@ if __name__ == "__main__":
         eval_freq=args.eval_freq,
         callback_after_eval=callback_after_eval,
         n_eval_episodes=config.env.num_test_envs,
+        deterministic=False,
         best_model_save_path=model_save_dir,
         log_path=eval_dir,
         verbose=1
@@ -208,5 +209,5 @@ if __name__ == "__main__":
 
     # Evaluate the trained model loaded from file
     mean_reward, std_reward = evaluate_policy(model, eval_envs,
-                                              n_eval_episodes=args.num_test_envs)
+                                              n_eval_episodes=config.env.num_test_envs)
     print(f"After Loading: Mean reward: {mean_reward} +/- {std_reward:.2f}")
